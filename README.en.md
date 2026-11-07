@@ -125,19 +125,25 @@ splitlink/
 
 ---
 
-## Deploy
+## Running the demo
 
-**Render (free)**: create a Blueprint from this repo — `render.yaml` sets the start command, health check and demo seeding.
+This project is **not deployed online**. A backend needs a long-running process, and free hosts either require a payment method or sleep aggressively — not worth paying for just to show a portfolio piece. Local is the reliable option.
+
+On Windows, double-click `run.bat`: it seeds demo data, starts the server and opens the browser.
 
 ```bash
-# or Docker
-docker build -t splitlink .
-docker run -p 8787:8787 -e SPLITLINK_HOST=0.0.0.0 splitlink
+python scripts/seed_demo.py   # first run: 3 links + 14 days of clicks
+python app.py                 # http://127.0.0.1:8787/
 ```
 
-Note: on free tiers the filesystem is ephemeral, so the SQLite file resets on every deploy. The demo seeder repopulates it automatically when `SPLITLINK_DEMO=1`.
+A 30-second walkthrough for interviews:
 
----
+1. The console header shows "running · 3 links" — the service is up.
+2. Click `/spring-campaign`: 14-day trend, A/B split (2:1 weights → roughly 67% / 33%), referrers.
+3. Visit `http://127.0.0.1:8787/spring-campaign` directly — it 302s to the target and the click counter increments.
+4. Point at the API table: the page is just one client of the same REST endpoints.
+
+Deployment is still possible — `render.yaml` and the `Dockerfile` are included, and the code honours the platform `PORT` variable. Render now requires a payment method on new accounts (free instances still cost $0), which is why it is not the default path.
 
 ## Related projects
 
