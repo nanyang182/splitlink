@@ -1,5 +1,7 @@
 # SplitLink · 带 A/B 分流的短链服务
 
+**中文** ｜ [English](README.en.md)
+
 > 一条短链，按权重分流到多个目标页，并告诉你哪一版真的被点开了。
 
 ![控制台](docs/dashboard.png)
@@ -171,6 +173,19 @@ docker run -p 8787:8787 -e SPLITLINK_HOST=0.0.0.0 splitlink
 ```
 
 ---
+
+## 九、部署到云端
+
+**Render 免费实例（推荐）**：仓库里带了 `render.yaml` 蓝图，在 Render 里选 "New → Blueprint"，指向这个仓库即可，启动命令、健康检查、演示数据都配好了。
+
+要注意两点：
+
+1. **免费实例会休眠**：约 15 分钟无请求后休眠，下次访问要等 30 秒左右冷启动。演示前先点一次唤醒。
+2. **文件系统是临时的**：每次重新部署，SQLite 文件会重置。所以 `render.yaml` 里设了 `SPLITLINK_DEMO=1`，空库时自动灌演示数据。
+
+想持久化就把 `SPLITLINK_DB` 指到挂载盘（付费功能），或者把 `store.py` 换成 Postgres。
+
+**Docker**：见下一节。
 
 ## 相关项目
 
