@@ -1,0 +1,2 @@
+# SplitLink 只依赖 Python 标准库，没有第三方包。
+# 保留这个文件是为了让托管平台（Render / Railway 等）识别这是一个 Python 项目。
