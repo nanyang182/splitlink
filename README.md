@@ -169,3 +169,14 @@ splitlink/
 docker build -t splitlink .
 docker run -p 8787:8787 -e SPLITLINK_HOST=0.0.0.0 splitlink
 ```
+
+---
+
+## 相关项目
+
+同一个人的另外两个项目：
+
+- **Retail Insight**（数据侧）→ [nanyang182/retail-insight](https://github.com/nanyang182/retail-insight)
+  54 万条真实交易数据的分析看板。
+- **JD Lens**（前端 / 产品侧）→ [nanyang182/jd-lens](https://github.com/nanyang182/jd-lens)
+  粘一段招聘 JD，看清它在要什么、你还缺什么。
