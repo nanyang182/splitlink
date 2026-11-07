@@ -38,8 +38,9 @@ from validate import (ValidationError, normalize_expires, normalize_slug,
 ROOT = Path(__file__).resolve().parent
 DB_PATH = os.environ.get("SPLITLINK_DB", str(ROOT / "data" / "splitlink.db"))
 STATIC = ROOT / "static"
-HOST = os.environ.get("SPLITLINK_HOST", "127.0.0.1")
-PORT = int(os.environ.get("SPLITLINK_PORT", "8787"))
+# 云端（Render / Railway / Fly）会注入 PORT，并要求监听 0.0.0.0
+HOST = os.environ.get("SPLITLINK_HOST") or ("0.0.0.0" if os.environ.get("PORT") else "127.0.0.1")
+PORT = int(os.environ.get("SPLITLINK_PORT") or os.environ.get("PORT") or "8787")
 
 ALPHABET = string.ascii_letters + string.digits
 SLUG_LEN = 7
@@ -296,6 +297,13 @@ def main() -> None:
     token = os.environ.get("SPLITLINK_TOKEN") or None
     server = make_server(token=token)
     port = server.server_address[1]
+
+    # 云端演示：空库时自动灌一份数据，避免首页是空白的
+    if os.environ.get("SPLITLINK_DEMO") == "1" and not server.store.list_links(limit=1):
+        from demo import seed
+        n = seed(server.store)
+        print(f"已写入演示数据：{n} 次点击")
+
     mode = "token 鉴权" if token else "本地开发模式（未设置 SPLITLINK_TOKEN，写接口不校验）"
     print(f"SplitLink 已启动: http://{HOST}:{port}/    [{mode}]")
     print(f"数据库: {DB_PATH}")
@@ -310,4 +318,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 

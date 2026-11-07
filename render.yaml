@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: splitlink
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: "echo 'no build step'"
+    startCommand: "python app.py"
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.6"
+      # 空库时自动写入演示数据，避免首页空着
+      - key: SPLITLINK_DEMO
+        value: "1"
