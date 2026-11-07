@@ -1,0 +1,364 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SplitLink · 带分流的短链服务</title>
+<style>
+  :root {
+    --ink: #0A1B2E; --blue: #1E63D8; --cyan: #27C7DB;
+    --bg: #F3F7FC; --card: #fff; --line: #E3EBF5;
+    --muted: #6E88A1; --faint: #9AAFC1;
+    --ok: #16A34A; --bad: #E5484D; --warn: #F59E0B;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(10,27,46,.97); color: #EAF2FB;
+    border-bottom: 1px solid rgba(39,199,219,.16);
+  }
+  .bar {
+    max-width: 1320px; margin: 0 auto; padding: 0 26px; height: 56px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 700; letter-spacing: .1em; }
+  .brand i {
+    width: 9px; height: 21px; border-radius: 3px; display: block;
+    background: linear-gradient(180deg, var(--cyan), var(--blue));
+  }
+  .brand b { color: var(--cyan); }
+  .brand small { font-size: 11.5px; color: #7E96AD; font-weight: 400; letter-spacing: 0; padding-left: 10px; border-left: 1px solid #24425C; }
+  .status { font-size: 12px; color: #92A9C0; display: flex; align-items: center; gap: 8px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px rgba(22,163,74,.18); }
+
+  main { max-width: 1320px; margin: 0 auto; padding: 20px 26px 40px; display: grid; grid-template-columns: 400px 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; }
+  .card + .card { margin-top: 14px; }
+  .card h2 { margin: 0 0 4px; font-size: 14px; }
+  .card p.sub { margin: 0 0 14px; font-size: 11.5px; color: var(--faint); }
+
+  label { display: block; font-size: 12px; color: var(--muted); margin: 12px 0 6px; }
+  input[type=text], input[type=number], select {
+    width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 9px;
+    font-family: inherit; font-size: 12.8px; background: #FBFDFF; color: var(--ink); outline: none;
+  }
+  input:focus, select:focus { border-color: #9BC0EE; box-shadow: 0 0 0 3px rgba(30,99,216,.1); background: #fff; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .variant { display: grid; grid-template-columns: 34px 1fr 74px; gap: 8px; align-items: center; margin-top: 8px; }
+  .variant .lbl {
+    width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center;
+    background: #EAF1FE; color: var(--blue); font-weight: 700; font-size: 12px;
+  }
+  button {
+    font-family: inherit; cursor: pointer; border-radius: 9px; border: 1px solid transparent;
+    font-size: 13px; padding: 10px 16px; transition: .15s;
+  }
+  .primary { width: 100%; margin-top: 16px; background: var(--blue); color: #fff; font-weight: 600; box-shadow: 0 8px 18px -10px rgba(30,99,216,.9); }
+  .primary:hover { background: #1a58c2; }
+  .ghost { background: #fff; border-color: var(--line); color: #4E6475; font-size: 12px; padding: 6px 12px; }
+  .ghost:hover { border-color: #C9D8E7; color: var(--blue); }
+
+  .result { margin-top: 14px; padding: 12px 14px; border-radius: 10px; background: #F2FBF5; border: 1px solid #D6EEDD; display: none; }
+  .result.show { display: block; }
+  .result .u { font-size: 13.5px; font-weight: 700; color: #14703A; word-break: break-all; }
+  .result .hint { font-size: 11.5px; color: #5B8A6C; margin-top: 4px; }
+
+  .list { list-style: none; margin: 0; padding: 0; max-height: 340px; overflow: auto; }
+  .list li {
+    display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center;
+    padding: 9px 10px; border-radius: 9px; cursor: pointer; border: 1px solid transparent;
+  }
+  .list li:hover { background: #F7FAFE; }
+  .list li.on { background: #EFF5FE; border-color: #CBDFF8; }
+  .list .slug { font-family: Consolas, monospace; font-size: 12.5px; color: var(--blue); }
+  .list .ct { font-size: 11.5px; color: var(--faint); font-variant-numeric: tabular-nums; }
+  .list .del { border: 0; background: transparent; color: #C0CEDC; font-size: 14px; padding: 0 2px; }
+  .list .del:hover { color: var(--bad); }
+
+  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px; }
+  .kpi { background: #F8FBFF; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .kpi b { display: block; font-size: 24px; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+  .kpi span { font-size: 11px; color: var(--faint); }
+
+  .chart { display: flex; align-items: flex-end; gap: 4px; height: 110px; padding-top: 8px; }
+  .chart .col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; }
+  .chart .bar {
+    background: linear-gradient(180deg, #4C8BEF, var(--blue));
+    border-radius: 3px 3px 0 0; min-height: 2px; transition: height .4s ease;
+  }
+  .chart .bar.zero { background: #E9F1FA; }
+  .axis { display: flex; gap: 4px; margin-top: 6px; }
+  .axis span { flex: 1; text-align: center; font-size: 9px; color: #B9C9D8; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th { text-align: left; font-weight: 600; color: var(--faint); font-size: 11px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  td { padding: 8px 0; border-bottom: 1px solid #F1F6FC; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .pill { font-size: 10.5px; padding: 2px 7px; border-radius: 5px; background: #EAF1FE; color: var(--blue); font-weight: 600; }
+  .mini { height: 6px; border-radius: 3px; background: #F0F5FB; overflow: hidden; margin-top: 5px; }
+  .mini i { display: block; height: 100%; background: var(--cyan); border-radius: 3px; }
+
+  .empty { text-align: center; padding: 60px 20px; color: var(--faint); font-size: 13px; }
+  .empty b { display: block; font-size: 15px; color: #7E93A8; margin-bottom: 6px; }
+
+  pre {
+    background: #0A1B2E; color: #D7E6F5; padding: 14px 16px; border-radius: 10px;
+    font-size: 11.5px; line-height: 1.75; overflow: auto; margin: 0;
+  }
+  pre .c { color: #6F8CA6; }
+  pre .k { color: #27C7DB; }
+  footer { max-width: 1320px; margin: 0 auto; padding: 0 26px 30px; font-size: 11px; color: #A6B8C8; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <div class="brand"><i></i><span>SPLIT<b>LINK</b></span><small>带 A/B 分流的短链服务</small></div>
+    <div class="status"><span class="dot"></span><span id="health">检查中…</span></div>
+  </div>
+</header>
+
+<main>
+  <section>
+    <div class="card">
+      <h2>创建短链</h2>
+      <p class="sub">同一短链可以按权重分流到多个目标页，用来看哪版转化更好。</p>
+
+      <label for="url">目标地址</label>
+      <input id="url" type="text" placeholder="https://example.com/landing" />
+
+      <div class="row2">
+        <div>
+          <label for="slug">自定义路径（可选）</label>
+          <input id="slug" type="text" placeholder="campaign-a" />
+        </div>
+        <div>
+          <label for="exp">有效期（天）</label>
+          <input id="exp" type="number" min="0" max="3650" placeholder="0 = 永久" />
+        </div>
+      </div>
+
+      <label>分流目标（B 可选填）</label>
+      <div class="variant">
+        <span class="lbl">A</span>
+        <input id="vb" type="text" placeholder="B 版本地址（留空则不分流）" />
+        <input id="wb" type="number" min="1" max="100" value="1" title="B 的权重" />
+      </div>
+
+      <button class="primary" id="create">生成短链</button>
+      <div class="result" id="result">
+        <div class="u" id="short-url"></div>
+        <div class="hint" id="short-hint"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>已有短链</h2>
+      <p class="sub">点一条查看它的点击统计。</p>
+      <ul class="list" id="list"></ul>
+    </div>
+  </section>
+
+  <section>
+    <div class="card" id="stats-card">
+      <div class="empty" id="empty">
+        <b>还没有选择短链</b>
+        在左边创建一条，或者点已有短链看数据。
+      </div>
+
+      <div id="stats" style="display:none">
+        <h2 id="stats-title">—</h2>
+        <p class="sub" id="stats-sub"></p>
+
+        <div class="kpis">
+          <div class="kpi"><b id="k-total">0</b><span>总点击</span></div>
+          <div class="kpi"><b id="k-today">0</b><span>今日点击</span></div>
+          <div class="kpi"><b id="k-variants">0</b><span>分流目标</span></div>
+        </div>
+
+        <h3 style="font-size:13px;margin:0 0 4px">近 14 天点击</h3>
+        <div class="chart" id="chart"></div>
+        <div class="axis" id="axis"></div>
+
+        <h3 style="font-size:13px;margin:18px 0 6px">分流效果</h3>
+        <table>
+          <thead><tr><th>目标</th><th>地址</th><th class="num" style="text-align:right">点击</th><th class="num" style="text-align:right">占比</th></tr></thead>
+          <tbody id="variant-rows"></tbody>
+        </table>
+
+        <h3 style="font-size:13px;margin:18px 0 6px">来源</h3>
+        <table>
+          <thead><tr><th>来源</th><th class="num" style="text-align:right">点击</th></tr></thead>
+          <tbody id="referer-rows"></tbody>
+        </table>
+
+        <h3 style="font-size:13px;margin:18px 0 6px">最近点击</h3>
+        <table>
+          <thead><tr><th>时间</th><th>分流</th><th>来源</th></tr></thead>
+          <tbody id="recent-rows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>接口示例</h2>
+      <p class="sub">同一个后端就是浏览器里这张页面的数据来源。</p>
+      <pre><span class="c"># 创建（A/B 分流）</span>
+curl -X POST http://127.0.0.1:8787/api/links \
+  -H <span class="k">"Content-Type: application/json"</span> \
+  -d '{"url":"https://a.example.com","variants":[{"url":"https://a.example.com","weight":1},{"url":"https://b.example.com","weight":1}]}'
+
+<span class="c"># 看统计</span>
+curl http://127.0.0.1:8787/api/links/&lt;slug&gt;/stats</pre>
+    </div>
+  </section>
+</main>
+
+<footer>纯 Python 标准库实现 · SQLite 存储 · 单文件数据库</footer>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var state = { slug: null, links: [] };
+
+  function api(path, opts) {
+    return fetch(path, opts).then(function (r) {
+      return r.json().then(function (body) {
+        if (!r.ok) throw new Error((body.error && body.error.message) || ("HTTP " + r.status));
+        return body;
+      });
+    });
+  }
+
+  function health() {
+    api("/api/health").then(function (h) {
+      $("health").textContent = "运行中 · " + h.links + " 条短链 · " + (h.auth === "token" ? "已开启鉴权" : "本地模式");
+    }).catch(function () { $("health").textContent = "连接失败"; });
+  }
+
+  function loadLinks() {
+    api("/api/links").then(function (data) {
+      state.links = data.items || [];
+      var host = location.host;
+      $("list").innerHTML = state.links.map(function (l) {
+        return '<li data-slug="' + l.slug + '" class="' + (l.slug === state.slug ? "on" : "") + '">' +
+          '<span class="slug">/' + l.slug + "</span>" +
+          '<span class="ct">' + l.hits + " 次</span>" +
+          '<button class="del" data-del="' + l.slug + '" title="删除">×</button></li>';
+      }).join("") || '<li style="cursor:default;color:#A6B8C8;font-size:12px">还没有短链</li>';
+      if (!state.slug && state.links.length) {
+        var top = state.links.slice().sort(function (a, b) { return b.hits - a.hits; })[0];
+        select(top.slug);
+      }
+    });
+  }
+
+  function select(slug) {
+    state.slug = slug;
+    loadLinks();
+    api("/api/links/" + slug + "/stats").then(render).catch(function (e) {
+      alert(e.message);
+    });
+  }
+
+  function render(s) {
+    $("empty").style.display = "none";
+    $("stats").style.display = "block";
+    $("stats-title").textContent = "/" + s.slug;
+    $("stats-sub").textContent = "总点击 " + s.total + " 次 · 数据来自 SQLite 聚合查询";
+
+    var today = s.series[s.series.length - 1];
+    $("k-total").textContent = s.total;
+    $("k-today").textContent = today ? today.clicks : 0;
+    $("k-variants").textContent = s.variants.length;
+
+    var max = Math.max.apply(null, s.series.map(function (d) { return d.clicks; })) || 1;
+    $("chart").innerHTML = s.series.map(function (d) {
+      var h = d.clicks ? Math.max(6, Math.round(d.clicks / max * 100)) : 0;
+      return '<div class="col"><div class="bar' + (d.clicks ? "" : " zero") + '" style="height:' + h + '%" title="' + d.date + "：" + d.clicks + ' 次"></div></div>';
+    }).join("");
+    $("axis").innerHTML = s.series.map(function (d, i) {
+      return i % 2 === 0 ? "<span>" + d.date.slice(5) + "</span>" : "<span></span>";
+    }).join("");
+
+    $("variant-rows").innerHTML = s.variants.map(function (v) {
+      return "<tr><td><span class='pill'>" + v.label + "</span></td>" +
+        '<td style="color:#6E88A1;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + v.target + "</td>" +
+        '<td class="num">' + v.clicks + "</td>" +
+        '<td class="num">' + v.share + '%<div class="mini"><i style="width:' + v.share + '%"></i></div></td></tr>';
+    }).join("");
+
+    $("referer-rows").innerHTML = s.referers.map(function (r) {
+      return "<tr><td>" + r.name + '</td><td class="num">' + r.clicks + "</td></tr>";
+    }).join("") || '<tr><td colspan="2" style="color:#A6B8C8">暂无数据</td></tr>';
+
+    $("recent-rows").innerHTML = s.recent.map(function (c) {
+      return "<tr><td>" + c.ts.replace("T", " ").replace("Z", "") + "</td>" +
+        "<td><span class='pill'>" + c.label + "</span></td><td>" + c.referer + "</td></tr>";
+    }).join("") || '<tr><td colspan="3" style="color:#A6B8C8">暂无数据</td></tr>';
+  }
+
+  $("create").addEventListener("click", function () {
+    var url = $("url").value.trim();
+    var vb = $("vb").value.trim();
+    if (!url) { alert("先填目标地址"); return; }
+
+    var variants = [{ url: url, weight: 1, label: "A" }];
+    if (vb) variants.push({ url: vb, weight: Number($("wb").value) || 1, label: "B" });
+
+    var payload = { url: url, variants: variants };
+    if ($("slug").value.trim()) payload.slug = $("slug").value.trim();
+    var exp = Number($("exp").value);
+    if (exp > 0) payload.expires_in_days = exp;
+
+    fetch("/api/links", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    }).then(function (r) { return r.json().then(function (b) { if (!r.ok) throw new Error(b.error.message); return b; }); })
+      .then(function (res) {
+        $("result").classList.add("show");
+        $("short-url").textContent = res.short_url;
+        $("short-hint").textContent = "已创建，" + res.variants.length + " 个分流目标。" + (res.expires_at ? " 到期：" + res.expires_at.slice(0, 10) : " 永久有效");
+        $("url").value = ""; $("vb").value = ""; $("slug").value = "";
+        state.slug = res.slug;
+        loadLinks();
+        select(res.slug);
+      })
+      .catch(function (e) { alert(e.message); });
+  });
+
+  $("list").addEventListener("click", function (e) {
+    var del = e.target.closest("[data-del]");
+    if (del) {
+      e.stopPropagation();
+      if (!confirm("删除 /" + del.getAttribute("data-del") + " 及其统计数据？")) return;
+      fetch("/api/links/" + del.getAttribute("data-del"), { method: "DELETE" })
+        .then(function () {
+          if (state.slug === del.getAttribute("data-del")) state.slug = null;
+          loadLinks();
+          $("stats").style.display = "none";
+          $("empty").style.display = "block";
+        });
+      return;
+    }
+    var li = e.target.closest("li[data-slug]");
+    if (li) select(li.getAttribute("data-slug"));
+  });
+
+  health();
+  loadLinks();
+  setInterval(health, 15000);
+})();
+</script>
+</body>
+</html>
+
